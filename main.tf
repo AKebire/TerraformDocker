@@ -312,3 +312,4 @@ user_data = <<-EOF
     Name = "terraform-ec2-instance"
   }
 }
+# Step 1 
