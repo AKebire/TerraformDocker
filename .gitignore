@@ -3,3 +3,4 @@
 terraform.tfstate
 terraform.tfstate.backup
 terra_ec2_key.pem
+actions-runner
