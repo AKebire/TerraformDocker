@@ -1,0 +1,57 @@
+
+name: Terraform Destroy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  destroy:
+    name: Destroy AWS Infrastructure
+    runs-on: [self-hosted, Windows, X64]
+
+    defaults:
+      run:
+        shell: powershell
+
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      AWS_REGION: "eu-west-2"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Show Terraform state
+        run: terraform state list
+
+      - name: Create destroy plan
+        run: terraform plan -destroy -input=false -out=destroy.tfplan
+
+      - name: Show destroy plan
+        run: terraform show -no-color destroy.tfplan
+
+      - name: Destroy infrastructure
+        run: terraform apply -input=false -auto-approve destroy.tfplan
