@@ -1,12 +1,14 @@
 name: Terraform deployment
 
-'on':
+on:
   push:
     branches:
       - main
+
   pull_request:
     branches:
       - main
+
   workflow_dispatch:
 
 permissions:
@@ -18,36 +20,55 @@ concurrency:
 
 jobs:
   terraform:
-    #change the runner to your self-hosted Linux runner if you are using a self-hosted runner. You can also use ubuntu-latest or macos-latest if you are using GitHub-hosted runners.
-    #Trial
+    name: Terraform on Windows
     runs-on: [self-hosted, Windows, X64]
+
     env:
-      TF_IN_AUTOMATION: true
-      TF_INPUT: false
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
 
     steps:
-      - name: Check out repository
+
+      # 1. Download repository code
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
 
-      - name: Set up Terraform
+      # 2. Install Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+          terraform_wrapper: false
 
-      - name: Check formatting
+      
+
+      # 4. Check Terraform version
+      - name: Check Terraform version
+        shell: pwsh
+        run: terraform version
+
+      # 5. Check formatting
+      - name: Terraform Format
+        shell: pwsh
         run: terraform fmt -check -recursive
 
-      - name: Initialize Terraform
+      # 6. Initialize Terraform
+      - name: Terraform Init
+        shell: pwsh
         run: terraform init -input=false
 
-      - name: Validate configuration
+      # 7. Validate configuration
+      - name: Terraform Validate
+        shell: pwsh
         run: terraform validate
 
-      - name: Create plan
-        run: terraform plan -input=false -out=tfplan
+      # 8. Generate execution plan
+      - name: Terraform Plan
+        shell: pwsh
+        run: terraform plan -input=false -lock-timeout=5m -out=tfplan
 
-      - name: Apply on main
+      # 9. Apply changes only on main branch
+      - name: Terraform Apply
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        shell: pwsh
         run: terraform apply -input=false -auto-approve tfplan
