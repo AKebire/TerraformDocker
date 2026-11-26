@@ -1,3 +1,4 @@
+
 name: Terraform deployment
 
 on:
@@ -13,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: terraform-${{ github.ref }}
@@ -23,12 +25,16 @@ jobs:
     name: Terraform on Windows
     runs-on: [self-hosted, Windows, X64]
 
+    defaults:
+      run:
+        shell: powershell
+
     env:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
+      AWS_REGION: "eu-west-2"
 
     steps:
-
       # 1. Download repository code
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,35 +46,42 @@ jobs:
           terraform_version: "1.10.5"
           terraform_wrapper: false
 
-      
+      # 3. Configure AWS authentication using OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      # 4. Check Terraform version
+      # 4. Verify AWS account
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      # 5. Check Terraform version
       - name: Check Terraform version
-        shell: pwsh
         run: terraform version
 
-      # 5. Check formatting
+      # 6. Check formatting
       - name: Terraform Format
-        shell: pwsh
         run: terraform fmt -check -recursive
 
-      # 6. Initialize Terraform
+      # 7. Initialize Terraform
       - name: Terraform Init
-        shell: pwsh
         run: terraform init -input=false
 
-      # 7. Validate configuration
+      # 8. Validate configuration
       - name: Terraform Validate
-        shell: pwsh
         run: terraform validate
 
-      # 8. Generate execution plan
+      # 9. Generate execution plan
       - name: Terraform Plan
-        shell: pwsh
         run: terraform plan -input=false -lock-timeout=5m -out=tfplan
 
-      # 9. Apply changes only on main branch
+      # 10. Display execution plan
+      - name: Show Terraform Plan
+        run: terraform show -no-color tfplan
+
+      # 11. Apply changes only on main branch
       - name: Terraform Apply
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        shell: pwsh
         run: terraform apply -input=false -auto-approve tfplan
