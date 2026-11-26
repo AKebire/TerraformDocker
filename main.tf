@@ -272,7 +272,7 @@ resource "aws_instance" "my_ec2" {
 
   # Place the EC2 instances inside our subnet.
   subnet_id = aws_subnet.my_subnet.id
-user_data = <<-EOF
+  user_data = <<-EOF
               #!/bin/bash
               set -e
 
